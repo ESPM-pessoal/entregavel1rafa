@@ -1,0 +1,175 @@
+<main class="container pb-5">
+	<div class="row justify-content-center">
+		<div class="col-xl-10">
+			<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+				<div>
+					<h1 class="h3 mb-1">Registrar consumo de IA</h1>
+					<p class="text-muted mb-0">Envia um POST para <code>/api/v1/consumos-ia</code> através do Node.</p>
+				</div>
+				<a class="btn btn-outline-primary" href="/consumo-ia/consultar">Consultar registros</a>
+			</div>
+
+			<div id="mensagem" class="alert d-none" role="status" aria-live="polite"></div>
+
+			<form id="formConsumo" class="card shadow-sm" novalidate>
+				<div class="card-body">
+					<h2 class="h5 mb-3">Identificação</h2>
+					<div class="row g-3">
+						<div class="col-md-8">
+							<label for="id" class="form-label">Id do consumo</label>
+							<div class="input-group">
+								<input id="id" name="id" class="form-control" maxlength="64" required />
+								<button id="gerarId" class="btn btn-outline-secondary" type="button">Gerar ID</button>
+							</div>
+						</div>
+						<div class="col-md-4">
+							<label for="ocorridoEm" class="form-label">Ocorrido em</label>
+							<input id="ocorridoEm" name="ocorridoEm" type="datetime-local" step="1" class="form-control" required />
+						</div>
+						<div class="col-md-4">
+							<label for="empresaId" class="form-label">Id da empresa</label>
+							<input id="empresaId" name="empresaId" class="form-control" maxlength="64" required />
+						</div>
+						<div class="col-md-4">
+							<label for="departamentoId" class="form-label">Id do departamento</label>
+							<input id="departamentoId" name="departamentoId" class="form-control" maxlength="64" required />
+						</div>
+						<div class="col-md-4">
+							<label for="colaboradorId" class="form-label">Id do colaborador</label>
+							<input id="colaboradorId" name="colaboradorId" class="form-control" maxlength="64" required />
+						</div>
+					</div>
+
+					<hr class="my-4" />
+					<h2 class="h5 mb-3">Uso da ferramenta</h2>
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label for="ferramentaId" class="form-label">Id da ferramenta</label>
+							<input id="ferramentaId" name="ferramentaId" class="form-control" maxlength="64" required />
+						</div>
+						<div class="col-md-4">
+							<label for="modeloId" class="form-label">Id do modelo</label>
+							<input id="modeloId" name="modeloId" class="form-control" maxlength="64" required />
+						</div>
+						<div class="col-md-4">
+							<label for="aplicacao" class="form-label">Aplicação</label>
+							<input id="aplicacao" name="aplicacao" class="form-control" maxlength="150" required />
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label for="quantidadeRequisicoes" class="form-label">Requisições</label>
+							<input id="quantidadeRequisicoes" name="quantidadeRequisicoes" type="number" min="0" step="1" value="1" class="form-control" required />
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label for="tokensEntrada" class="form-label">Tokens de entrada</label>
+							<input id="tokensEntrada" name="tokensEntrada" type="number" min="0" step="1" value="0" class="form-control" required />
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label for="tokensSaida" class="form-label">Tokens de saída</label>
+							<input id="tokensSaida" name="tokensSaida" type="number" min="0" step="1" value="0" class="form-control" required />
+						</div>
+						<div class="col-sm-6 col-lg-3">
+							<label for="latenciaMs" class="form-label">Latência (ms)</label>
+							<input id="latenciaMs" name="latenciaMs" type="number" min="0" max="999999999.999" step="0.001" class="form-control" />
+						</div>
+						<div class="col-md-4">
+							<label for="status" class="form-label">Status</label>
+							<select id="status" name="status" class="form-select" required>
+								<option value="success">Sucesso</option>
+								<option value="error">Erro</option>
+								<option value="rate_limited">Limite de taxa</option>
+								<option value="timeout">Tempo esgotado</option>
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label for="projetoId" class="form-label">Id do projeto <span class="text-muted">(opcional)</span></label>
+							<input id="projetoId" name="projetoId" class="form-control" maxlength="64" />
+						</div>
+						<div class="col-md-4">
+							<label for="centroCusto" class="form-label">Centro de custo <span class="text-muted">(opcional)</span></label>
+							<input id="centroCusto" name="centroCusto" class="form-control" maxlength="100" />
+						</div>
+					</div>
+				</div>
+				<div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
+					<a class="btn btn-outline-secondary" href="/">Cancelar</a>
+					<button id="botaoRegistrar" class="btn btn-primary" type="submit">Registrar consumo</button>
+				</div>
+			</form>
+			<p class="small text-muted mt-3">Os identificadores informados precisam existir na base importada pelo backend para que o registro seja aceito.</p>
+		</div>
+	</div>
+</main>
+
+<script src="/public/js/consumo-ia-api.js"></script>
+<script>
+	(function () {
+		const form = document.getElementById("formConsumo");
+		const mensagem = document.getElementById("mensagem");
+		const botao = document.getElementById("botaoRegistrar");
+
+		function agoraLocal() {
+			const agora = new Date();
+			const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
+			return local.toISOString().slice(0, 19);
+		}
+
+		function novoId() {
+			return window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : "consumo-" + Date.now();
+		}
+
+		function preencherPadroes() {
+			document.getElementById("id").value = novoId();
+			document.getElementById("ocorridoEm").value = agoraLocal();
+		}
+
+		function exibirErro(ex) {
+			let texto = ex.message || "Não foi possível registrar o consumo.";
+			if (ex.dados && Array.isArray(ex.dados.erros)) {
+				texto += " " + ex.dados.erros.map(function (erro) {
+					return erro.campo + ": " + erro.mensagem;
+				}).join(" ");
+			}
+			mensagem.textContent = texto;
+			mensagem.className = "alert alert-danger";
+		}
+
+		document.getElementById("gerarId").addEventListener("click", function () {
+			document.getElementById("id").value = novoId();
+		});
+
+		form.addEventListener("submit", async function (event) {
+			event.preventDefault();
+			mensagem.className = "alert d-none";
+			if (!form.checkValidity()) {
+				form.classList.add("was-validated");
+				return;
+			}
+
+			const dados = Object.fromEntries(new FormData(form).entries());
+			dados.quantidadeRequisicoes = Number(dados.quantidadeRequisicoes);
+			dados.tokensEntrada = Number(dados.tokensEntrada);
+			dados.tokensSaida = Number(dados.tokensSaida);
+			dados.latenciaMs = dados.latenciaMs === "" ? null : Number(dados.latenciaMs);
+			dados.projetoId = dados.projetoId || null;
+			dados.centroCusto = dados.centroCusto || null;
+
+			botao.disabled = true;
+			botao.textContent = "Registrando...";
+			try {
+				const resultado = await ConsumoIaApi.registrar(dados);
+				mensagem.textContent = "Consumo registrado com sucesso. Id: " + resultado.id;
+				mensagem.className = "alert alert-success";
+				form.reset();
+				form.classList.remove("was-validated");
+				preencherPadroes();
+			} catch (ex) {
+				exibirErro(ex);
+			} finally {
+				botao.disabled = false;
+				botao.textContent = "Registrar consumo";
+			}
+		});
+
+		preencherPadroes();
+	})();
+</script>

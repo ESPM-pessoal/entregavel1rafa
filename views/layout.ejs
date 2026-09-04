@@ -7,17 +7,24 @@
 </head>
 <body>
 
-	<div>
-		Logo da empresa
+	<nav class="navbar navbar-expand navbar-light bg-light mb-4">
+		<div class="container-fluid">
+			<a class="navbar-brand" href="/">Empresa</a>
+			<div class="navbar-nav">
+				<a class="nav-link" href="/">Home</a>
+				<a class="nav-link" href="/consumo-ia/registrar">Registrar consumo</a>
+				<a class="nav-link" href="/consumo-ia/consultar">Consultar consumos</a>
+			</div>
 
-		<a href="/">Home</a>
-
-		<%- defineContent("espaco-barra") %>
-	</div>
+			<%- defineContent("espaco-barra") %>
+		</div>
+	</nav>
 
 	<%- body %>
 
-	<%- include("comum/rodape") %>
+	<div class="container-fluid mt-5">
+		<%- include("comum/rodape") %>
+	</div>
 
 </body>
 </html>

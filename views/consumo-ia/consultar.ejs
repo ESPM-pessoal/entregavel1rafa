@@ -1,0 +1,254 @@
+<main class="container pb-5">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+		<div>
+			<h1 class="h3 mb-1">Consultar consumo de IA</h1>
+			<p class="text-muted mb-0">Consulte um registro pela chave ou liste até 31 dias de consumo.</p>
+		</div>
+		<a class="btn btn-primary" href="/consumo-ia/registrar">Registrar consumo</a>
+	</div>
+
+	<div id="mensagem" class="alert d-none" role="status" aria-live="polite"></div>
+
+	<section class="card shadow-sm mb-4">
+		<div class="card-body">
+			<h2 class="h5">Consulta por ID</h2>
+			<p class="small text-muted">Os dois botões exercitam as duas formas de consulta publicadas pelo backend.</p>
+			<form id="formId" class="row g-3 align-items-end" novalidate>
+				<div class="col-md-5">
+					<label for="idConsulta" class="form-label">Id do consumo</label>
+					<input id="idConsulta" class="form-control" maxlength="64" required />
+				</div>
+				<div class="col-md-4">
+					<label for="empresaIdConsulta" class="form-label">Id da empresa</label>
+					<input id="empresaIdConsulta" class="form-control" maxlength="64" required />
+				</div>
+				<div class="col-md-3 d-grid gap-2">
+					<button class="btn btn-outline-primary" type="submit" data-forma="caminho">Consultar pelo caminho</button>
+					<button class="btn btn-outline-secondary" type="submit" data-forma="query">Consultar pela query</button>
+				</div>
+			</form>
+		</div>
+	</section>
+
+	<section class="card shadow-sm mb-4">
+		<div class="card-body">
+			<h2 class="h5">Consulta por período</h2>
+			<form id="formPeriodo" class="row g-3 align-items-end" novalidate>
+				<div class="col-lg-3 col-md-6">
+					<label for="empresaIdPeriodo" class="form-label">Id da empresa</label>
+					<input id="empresaIdPeriodo" class="form-control" maxlength="64" required />
+				</div>
+				<div class="col-lg-3 col-md-6">
+					<label for="inicio" class="form-label">Início</label>
+					<input id="inicio" type="datetime-local" step="1" class="form-control" required />
+				</div>
+				<div class="col-lg-3 col-md-6">
+					<label for="fim" class="form-label">Fim</label>
+					<input id="fim" type="datetime-local" step="1" class="form-control" required />
+				</div>
+				<div class="col-lg-1 col-md-3">
+					<label for="tamanho" class="form-label">Itens</label>
+					<input id="tamanho" type="number" min="1" max="100" step="1" value="20" class="form-control" required />
+				</div>
+				<div class="col-lg-2 col-md-3 d-grid">
+					<button id="botaoConsultar" class="btn btn-primary" type="submit">Consultar</button>
+				</div>
+			</form>
+		</div>
+	</section>
+
+	<section id="secaoResultado" class="card shadow-sm d-none">
+		<div class="card-header bg-white d-flex justify-content-between align-items-center">
+			<h2 class="h5 mb-0">Resultado</h2>
+			<span id="resumoPagina" class="small text-muted"></span>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th>Data</th>
+						<th>Id</th>
+						<th>Aplicação</th>
+						<th>Status</th>
+						<th>Requisições</th>
+						<th>Tokens</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="corpoTabela"></tbody>
+			</table>
+		</div>
+		<div class="card-footer bg-white d-flex justify-content-between align-items-center">
+			<button id="paginaAnterior" class="btn btn-sm btn-outline-secondary" type="button">Anterior</button>
+			<button id="proximaPagina" class="btn btn-sm btn-outline-secondary" type="button">Próxima</button>
+		</div>
+	</section>
+
+	<section id="secaoDetalhe" class="card shadow-sm mt-4 d-none">
+		<div class="card-header bg-white d-flex justify-content-between align-items-center">
+			<h2 class="h5 mb-0">Detalhes do registro</h2>
+			<button id="fecharDetalhe" class="btn-close" type="button" aria-label="Fechar"></button>
+		</div>
+		<div class="card-body">
+			<pre id="detalheJson" class="detalhe-json mb-0"></pre>
+		</div>
+	</section>
+</main>
+
+<script src="/public/js/consumo-ia-api.js"></script>
+<script>
+	(function () {
+		const mensagem = document.getElementById("mensagem");
+		const secaoResultado = document.getElementById("secaoResultado");
+		const secaoDetalhe = document.getElementById("secaoDetalhe");
+		const corpoTabela = document.getElementById("corpoTabela");
+		const resumoPagina = document.getElementById("resumoPagina");
+		const paginaAnterior = document.getElementById("paginaAnterior");
+		const proximaPagina = document.getElementById("proximaPagina");
+		let ultimaConsulta = null;
+		let paginaAtual = 0;
+		let totalPaginas = 0;
+
+		function dataHoraLocal(data) {
+			const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
+			return local.toISOString().slice(0, 19);
+		}
+
+		function configurarPeriodoInicial() {
+			const fim = new Date();
+			const inicio = new Date(fim.getTime() - 7 * 24 * 60 * 60 * 1000);
+			document.getElementById("inicio").value = dataHoraLocal(inicio);
+			document.getElementById("fim").value = dataHoraLocal(fim);
+		}
+
+		function limparMensagem() {
+			mensagem.className = "alert d-none";
+		}
+
+		function exibirErro(ex) {
+			let texto = ex.message || "A consulta não pôde ser realizada.";
+			if (ex.dados && Array.isArray(ex.dados.erros)) {
+				texto += " " + ex.dados.erros.map(function (erro) {
+					return erro.campo + ": " + erro.mensagem;
+				}).join(" ");
+			}
+			mensagem.textContent = texto;
+			mensagem.className = "alert alert-danger";
+		}
+
+		function mostrarDetalhe(registro) {
+			document.getElementById("detalheJson").textContent = JSON.stringify(registro, null, 2);
+			secaoDetalhe.classList.remove("d-none");
+			secaoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+
+		function adicionarCelula(linha, valor) {
+			const celula = document.createElement("td");
+			celula.textContent = valor === null || valor === undefined ? "—" : String(valor);
+			linha.appendChild(celula);
+		}
+
+		function renderizarPagina(resultado) {
+			const itens = Array.isArray(resultado.itens) ? resultado.itens : [];
+			corpoTabela.textContent = "";
+			paginaAtual = resultado.pagina || 0;
+			totalPaginas = resultado.totalPaginas || 0;
+
+			if (!itens.length) {
+				const linha = document.createElement("tr");
+				const celula = document.createElement("td");
+				celula.colSpan = 7;
+				celula.className = "text-center text-muted py-4";
+				celula.textContent = "Nenhum consumo encontrado nesse período.";
+				linha.appendChild(celula);
+				corpoTabela.appendChild(linha);
+			}
+
+			itens.forEach(function (item) {
+				const linha = document.createElement("tr");
+				adicionarCelula(linha, item.ocorridoEm);
+				adicionarCelula(linha, item.id);
+				adicionarCelula(linha, item.aplicacao);
+				adicionarCelula(linha, item.status);
+				adicionarCelula(linha, item.quantidadeRequisicoes);
+				adicionarCelula(linha, (item.tokensEntrada || 0) + (item.tokensSaida || 0));
+
+				const celulaAcao = document.createElement("td");
+				const botao = document.createElement("button");
+				botao.type = "button";
+				botao.className = "btn btn-sm btn-outline-primary";
+				botao.textContent = "Detalhes";
+				botao.addEventListener("click", function () { mostrarDetalhe(item); });
+				celulaAcao.appendChild(botao);
+				linha.appendChild(celulaAcao);
+				corpoTabela.appendChild(linha);
+			});
+
+			resumoPagina.textContent = "Página " + (paginaAtual + 1) + " de " + Math.max(totalPaginas, 1) + " · " + resultado.totalElementos + " registro(s)";
+			paginaAnterior.disabled = paginaAtual <= 0;
+			proximaPagina.disabled = totalPaginas === 0 || paginaAtual + 1 >= totalPaginas;
+			secaoResultado.classList.remove("d-none");
+		}
+
+		async function consultarPeriodo(pagina) {
+			limparMensagem();
+			const filtros = Object.assign({}, ultimaConsulta, { pagina: pagina });
+			try {
+				const resultado = await ConsumoIaApi.listar(filtros);
+				renderizarPagina(resultado);
+			} catch (ex) {
+				exibirErro(ex);
+			}
+		}
+
+		document.getElementById("formId").addEventListener("submit", async function (event) {
+			event.preventDefault();
+			limparMensagem();
+			if (!event.currentTarget.checkValidity()) {
+				event.currentTarget.classList.add("was-validated");
+				return;
+			}
+
+			const forma = event.submitter && event.submitter.dataset.forma;
+			const id = document.getElementById("idConsulta").value.trim();
+			const empresaId = document.getElementById("empresaIdConsulta").value.trim();
+			try {
+				const resultado = forma === "query"
+					? await ConsumoIaApi.obterPorChave(id, empresaId)
+					: await ConsumoIaApi.obterPorId(id, empresaId);
+				mostrarDetalhe(resultado);
+			} catch (ex) {
+				exibirErro(ex);
+			}
+		});
+
+		document.getElementById("formPeriodo").addEventListener("submit", async function (event) {
+			event.preventDefault();
+			if (!event.currentTarget.checkValidity()) {
+				event.currentTarget.classList.add("was-validated");
+				return;
+			}
+			ultimaConsulta = {
+				empresaId: document.getElementById("empresaIdPeriodo").value.trim(),
+				inicio: document.getElementById("inicio").value,
+				fim: document.getElementById("fim").value,
+				tamanho: Number(document.getElementById("tamanho").value)
+			};
+			await consultarPeriodo(0);
+		});
+
+		paginaAnterior.addEventListener("click", function () {
+			if (paginaAtual > 0)
+				consultarPeriodo(paginaAtual - 1);
+		});
+		proximaPagina.addEventListener("click", function () {
+			if (paginaAtual + 1 < totalPaginas)
+				consultarPeriodo(paginaAtual + 1);
+		});
+		document.getElementById("fecharDetalhe").addEventListener("click", function () {
+			secaoDetalhe.classList.add("d-none");
+		});
+
+		configurarPeriodoInicial();
+	})();
+</script>

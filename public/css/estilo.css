@@ -1,3 +1,22 @@
 body {
-	font-family: sans-serif;
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	background-color: #f8f9fa;
+}
+
+.card,
+.alert {
+	border-radius: 0.75rem;
+}
+
+.detalhe-json {
+	max-height: 32rem;
+	overflow: auto;
+	padding: 1rem;
+	border-radius: 0.5rem;
+	background: #101828;
+	color: #d0d5dd;
+}
+
+code {
+	word-break: break-word;
 }

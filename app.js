@@ -105,6 +105,8 @@ app.use((req, res, next) => {
 app.use("/", require("./routes/index"));
 app.use("/empresa", require("./routes/empresa"));
 app.use("/api/empresa", require("./routes/api/empresa"));
+app.use("/consumo-ia", require("./routes/consumo-ia"));
+app.use("/api/consumos-ia", require("./routes/api/consumo-ia"));
 
 // Depois de registrados todos os caminhos das rotas e seus
 // tratadores, registramos os tratadores que serão chamados

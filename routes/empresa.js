@@ -4,7 +4,7 @@ const wrap = require("express-async-error-wrapper");
 const router = express.Router();
 
 router.get("/criar", wrap(async (req, res) => {
-	res.render("empresa/criar");
+	res.render("empresa/criar", { titulo: "Cadastrar empresa" });
 }));
 
 router.get("/editar", wrap(async (req, res) => {

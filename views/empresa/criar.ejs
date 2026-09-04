@@ -1,81 +1,123 @@
 <div class="container-fluid">
 	<div class="row justify-content-center">
 		<div class="col-sm-6 col-xl-4">
-			<div class="mb-3">
-				<label for="inputNome" class="form-label">Nome</label>
-				<input type="text" class="form-control" id="inputNome" name="company_name" maxlength="100" />
-			</div>
-			<div class="mb-3">
-				<label for="selectIndustria" class="form-label">Indústria</label>
-				<select id="selectIndustria" class="form-select" name="industry">
-					<option value="">Selecione...</option>
-					<option>Financeiro</option>
-					<option>Marketing</option>
-					<option>Serviços</option>
-					<option>Tecnologia</option>
-					<option>Varejo</option>
-				</select>
-			</div>
-			<div class="mb-3">
-				<label for="selectTamanho" class="form-label">Tamanho</label>
-				<select id="selectTamanho" class="form-select" name="company_size">
-					<option value="">Selecione...</option>
-					<option>Pequena</option>
-					<option>Média</option>
-					<option>Grande</option>
-				</select>
-			</div>
-			<div class="mb-3">
-				<label for="inputFuncionarios" class="form-label">Qtde Funcionários</label>
-				<input type="number" id="inputFuncionarios" class="form-control" name="employee_count" min="1" />
-			</div>
-			<div>
-				<button type="button" class="btn btn-primary" onclick="criarEmpresa()">Criar</button>
-			</div>
+			<h1 class="h3 mb-4">Cadastrar empresa</h1>
+
+			<div id="mensagem" class="alert d-none" role="status" aria-live="polite"></div>
+
+			<form id="formEmpresa" novalidate>
+				<div class="mb-3">
+					<label for="inputNome" class="form-label">Nome</label>
+					<input type="text" class="form-control" id="inputNome" name="company_name" maxlength="100" required />
+					<div class="invalid-feedback">Informe o nome da empresa.</div>
+				</div>
+				<div class="mb-3">
+					<label for="selectIndustria" class="form-label">Indústria</label>
+					<select id="selectIndustria" class="form-select" name="industry" required>
+						<option value="">Selecione...</option>
+						<option>Financeiro</option>
+						<option>Marketing</option>
+						<option>Serviços</option>
+						<option>Tecnologia</option>
+						<option>Varejo</option>
+					</select>
+					<div class="invalid-feedback">Selecione uma indústria.</div>
+				</div>
+				<div class="mb-3">
+					<label for="selectTamanho" class="form-label">Tamanho</label>
+					<select id="selectTamanho" class="form-select" name="company_size" required>
+						<option value="">Selecione...</option>
+						<option>Pequena</option>
+						<option>Média</option>
+						<option>Grande</option>
+					</select>
+					<div class="invalid-feedback">Selecione o tamanho da empresa.</div>
+				</div>
+				<div class="mb-3">
+					<label for="inputFuncionarios" class="form-label">Quantidade de funcionários</label>
+					<input type="number" id="inputFuncionarios" class="form-control" name="employee_count" min="1" step="1" required />
+					<div class="invalid-feedback">Informe um número inteiro maior que zero.</div>
+				</div>
+				<div class="d-flex gap-2">
+					<button id="botaoCriar" type="submit" class="btn btn-primary">Criar empresa</button>
+					<a href="/" class="btn btn-outline-secondary">Cancelar</a>
+				</div>
+			</form>
 		</div>
 	</div>
 </div>
 
 <script>
-	async function criarEmpresa() {
+	(() => {
+		const form = document.getElementById("formEmpresa");
+		const botao = document.getElementById("botaoCriar");
+		const mensagem = document.getElementById("mensagem");
 
-		let inputNome = document.getElementById("inputNome");
-		let selectIndustria = document.getElementById("selectIndustria");
-		let selectTamanho = document.getElementById("selectTamanho");
-		let inputFuncionarios = document.getElementById("inputFuncionarios");
-
-		let company_name = inputNome.value;
-		let industry = selectIndustria.value;
-		let company_size = selectTamanho.value;
-		let employee_count = parseInt(inputFuncionarios.value);
-
-		// Aqui vão as validações normais, como vimos antes... 😊
-
-		let empresa = {
-			company_name: company_name,
-			industry: industry,
-			company_size: company_size,
-			employee_count: employee_count,
-		};
-
-		try {
-			const response = await fetch("/api/empresa/criar", {
-				method: "POST",
-				headers: {
-					"content-type": "application/json"
-				},
-				body: JSON.stringify(empresa),
-			});
-
-			const resultado = await response.json();
-
-			if (resultado.ok) {
-				alert("Sucesso");
-			} else {
-				alert("Erro");
-			}
-		} catch (ex) {
-			alert("Exceção");
+		function mostrarMensagem(texto, sucesso) {
+			mensagem.textContent = texto;
+			mensagem.className = "alert " + (sucesso ? "alert-success" : "alert-danger");
 		}
-	}
+
+		function extrairMensagem(resultado) {
+			if (typeof resultado === "string")
+				return resultado;
+			if (resultado && resultado.mensagem)
+				return resultado.mensagem;
+			if (resultado && resultado.message)
+				return resultado.message;
+			if (resultado && resultado.erro)
+				return resultado.erro;
+			return "Não foi possível cadastrar a empresa";
+		}
+
+		form.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			mensagem.className = "alert d-none";
+
+			if (!form.checkValidity()) {
+				form.classList.add("was-validated");
+				return;
+			}
+
+			const empresa = {
+				company_name: document.getElementById("inputNome").value.trim(),
+				industry: document.getElementById("selectIndustria").value,
+				company_size: document.getElementById("selectTamanho").value,
+				employee_count: Number.parseInt(document.getElementById("inputFuncionarios").value, 10)
+			};
+
+			botao.disabled = true;
+			botao.textContent = "Enviando...";
+
+			try {
+				const response = await fetch("/api/empresa/criar", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(empresa)
+				});
+
+				const texto = await response.text();
+				let resultado = null;
+				if (texto) {
+					try {
+						resultado = JSON.parse(texto);
+					} catch (_) {
+						resultado = texto;
+					}
+				}
+
+				if (!response.ok)
+					throw new Error(extrairMensagem(resultado));
+
+				mostrarMensagem("Empresa cadastrada com sucesso.", true);
+				form.reset();
+				form.classList.remove("was-validated");
+			} catch (ex) {
+				mostrarMensagem(ex.message || "Erro inesperado ao cadastrar a empresa.", false);
+			} finally {
+				botao.disabled = false;
+				botao.textContent = "Criar empresa";
+			}
+		});
+	})();
 </script>
